@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selfie Finder – Face Recognition Demo</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#181c30; --panel2:#20253d; --text:#e8eaf6; --muted:#98a0c3;
+    --accent:#6c8cff; --accent2:#9b6cff; --ok:#3ddc97; --warn:#ffb84d; --bad:#ff6b6b; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  header{padding:28px 20px 10px;text-align:center}
+  header h1{margin:0;font-size:1.9rem;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  header p{margin:6px auto 0;max-width:720px;color:var(--muted)}
+  main{max-width:1100px;margin:0 auto;padding:16px 16px 60px;display:grid;gap:18px}
+  .card{background:var(--panel);border-radius:var(--radius);padding:20px;border:1px solid #262c4b}
+  .card h2{margin:0 0 4px;font-size:1.1rem;display:flex;align-items:center;gap:10px}
+  .step{background:linear-gradient(135deg,var(--accent),var(--accent2));width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:.85rem;font-weight:700;color:#fff}
+  .hint{color:var(--muted);font-size:.88rem;margin:0 0 14px}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  button,.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:.95rem;font-weight:600;cursor:pointer;transition:.15s}
+  button:hover,.btn:hover{filter:brightness(1.12)}
+  button.secondary,.btn.secondary{background:var(--panel2);color:var(--text);border:1px solid #333a62}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  input[type=text],input[type=password]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #333a62;background:var(--panel2);color:var(--text);font-size:.92rem}
+  label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{padding:8px 14px;border-radius:999px;background:var(--panel2);color:var(--muted);cursor:pointer;border:1px solid #333a62;font-size:.88rem}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .pane{display:none}.pane.active{display:block}
+  #selfiePreviewWrap{position:relative;width:200px;height:200px;border-radius:var(--radius);background:var(--panel2);border:2px dashed #333a62;display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:.85rem;text-align:center}
+  #selfiePreviewWrap canvas,#selfiePreviewWrap video{width:100%;height:100%;object-fit:cover;display:block}
+  .status{font-size:.9rem;padding:8px 12px;border-radius:10px;background:var(--panel2);margin-top:12px}
+  .status.ok{color:var(--ok)}.status.warn{color:var(--warn)}.status.bad{color:var(--bad)}
+  .progress{height:10px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:12px}
+  .progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:14px 0}
+  input[type=range]{accent-color:var(--accent);width:220px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px}
+  .photo{background:var(--panel2);border-radius:12px;overflow:hidden;border:1px solid #333a62;display:flex;flex-direction:column}
+  .photo canvas{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#000}
+  .photo .meta{padding:8px 10px;font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+  .photo .name{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.72rem;font-weight:700;background:rgba(61,220,151,.15);color:var(--ok);align-self:flex-start}
+  .photo a{color:var(--accent);text-decoration:none;font-weight:600}
+  .stats{display:flex;gap:22px;flex-wrap:wrap;color:var(--muted);font-size:.88rem}
+  .stats b{color:var(--text);font-size:1.15rem}
+  details{margin-top:10px;color:var(--muted);font-size:.86rem}
+  details ol{padding-left:20px}
+  code{background:var(--panel2);padding:1px 6px;border-radius:6px;font-size:.82rem}
+  .privacy{font-size:.8rem;color:var(--muted);text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔍 Selfie Finder</h1>
+  <p>Upload a selfie, point it at a Google Drive folder, and find every photo that person appears in. Face matching runs locally in your browser.</p>
+</header>
+
+<main>
+  <!-- STEP 1 -->
+  <section class="card">
+    <h2><span class="step">1</span> Provide a selfie</h2>
+    <p class="hint">Use a clear, front-facing photo with only one face.</p>
+    <div class="row">
+      <div id="selfiePreviewWrap"><span id="selfiePlaceholder">No selfie yet</span></div>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:10px">
+          <label class="btn" for="selfieFile">📁 Upload selfie</label>
+          <input id="selfieFile" type="file" accept="image/*" hidden>
+          <button class="secondary" id="camBtn">📷 Use webcam</button>
+          <button class="secondary" id="snapBtn" hidden>● Capture</button>
+        </div>
+        <div id="modelStatus" class="status warn">Loading face-recognition models…</div>
+        <div id="selfieStatus" class="status" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="card">
+    <h2><span class="step">2</span> Choose where to search</h2>
+    <p class="hint">Connect a Google Drive folder, or try the demo with a folder on your computer.</p>
+    <div class="tabs">
+      <div class="tab active" data-pane="drivePane">☁️ Google Drive</div>
+      <div class="tab" data-pane="localPane">💻 Local folder (demo)</div>
+    </div>
+
+    <div id="drivePane" class="pane active">
+      <label>Google OAuth Client ID (Web application)</label>
+      <input type="text" id="clientId" placeholder="1234567890-abc123.apps.googleusercontent.com">
+      <label>Drive folder link or ID</label>
+      <input type="text" id="folderInput" placeholder="https://drive.google.com/drive/folders/XXXXXXXX">
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="recursive" checked> Include sub-folders</label>
+      <div class="row" style="margin-top:14px;gap:10px">
+        <button id="driveBtn" disabled>Sign in &amp; scan Drive folder</button>
+      </div>
+      <details>
+        <summary>How do I get a Client ID?</summary>
+        <ol>
+          <li>Open <a style="color:var(--accent)" href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> → create a project.</li>
+          <li><b>APIs &amp; Services → Library</b> → enable <b>Google Drive API</b>.</li>
+          <li><b>OAuth consent screen</b> → External → add yourself as a test user.</li>
+          <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>.</li>
+          <li>Add <code>http://localhost:8000</code> under <i>Authorized JavaScript origins</i>.</li>
+          <li>Paste the Client ID above. Only the read-only Drive scope is requested.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div id="localPane" class="pane">
+      <p class="hint" style="margin-top:0">Pick a folder of photos (all images inside, including sub-folders, will be scanned). Nothing is uploaded anywhere.</p>
+      <label class="btn" for="localFolder">📂 Choose folder</label>
+      <input id="localFolder" type="file" webkitdirectory multiple accept="image/*" hidden>
+      <label class="btn secondary" for="localFiles" style="margin-left:8px">🖼️ Or pick several images</label>
+      <input id="localFiles" type="file" multiple accept="image/*" hidden>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="card" id="resultsCard" hidden>
+    <h2><span class="step">3</span> Results</h2>
+    <div class="progress"><div id="bar"></div></div>
+    <div id="progressText" class="hint" style="margin-top:8px"></div>
+
+    <div class="controls">
+      <div>
+        <label style="margin:0">Match strictness: <b id="thVal">0.50</b> <span style="font-size:.75rem">(lower = stricter)</span></label>
+        <input type="range" id="threshold" min="0.30" max="0.70" step="0.01" value="0.50">
+      </div>
+      <button class="secondary" id="csvBtn" disabled>⬇ Export matches (CSV)</button>
+      <button class="secondary" id="stopBtn" hidden>■ Stop</button>
+    </div>
+
+    <div class="stats">
+      <div><b id="sScanned">0</b> scanned</div>
+      <div><b id="sFaces">0</b> faces found</div>
+      <div><b id="sMatch" style="color:var(--ok)">0</b> photos of this person</div>
+    </div>
+    <div id="matches" class="grid"></div>
+  </section>
+
+  <p class="privacy">🔒 Photos are processed on your device. Only the Drive API is contacted (read-only) to download images. Use this only with photos you have the right to search, and with the consent of the people in them.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ---------------- Config & state ---------------- */
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+const MAX_DIM = 1280;                       // downscale big photos for speed
+const $ = id => document.getElementById(id);
+const state = {
+  modelsReady:false, selfie:null,           // selfie = Float32Array descriptor
+  results:[],                               // {name,link,canvas,faces:[{box,desc}],best,bestBox}
+  scanning:false, stop:false, token:null
+};
+
+/* ---------------- Tabs ---------------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); $(t.dataset.pane).classList.add('active');
+});
+
+/* ---------------- Load models ---------------- */
+(async function loadModels(){
+  try{
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+    state.modelsReady = true;
+    setStatus($('modelStatus'),'✓ Models loaded — ready.','ok');
+    refreshButtons();
+  }catch(e){
+    setStatus($('modelStatus'),'Could not load models: '+e.message+'. Check your internet connection.','bad');
+  }
+})();
+
+function setStatus(el,msg,cls){ el.hidden=false; el.className='status '+(cls||''); el.textContent=msg; }
+function refreshButtons(){
+  const ok = state.modelsReady && state.selfie;
+  $('driveBtn').disabled = !ok;
+}
+
+/* ---------------- Image helpers ---------------- */
+function loadImage(src){
+  return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('image decode failed')); i.src=src; });
+}
+function toCanvas(img){
+  const s = Math.min(1, MAX_DIM/Math.max(img.naturalWidth||img.width, img.naturalHeight||img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round((img.naturalWidth||img.width)*s); c.height = Math.round((img.naturalHeight||img.height)*s);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return c;
+}
+async function blobToCanvas(blob){
+  const url = URL.createObjectURL(blob);
+  try{ return toCanvas(await loadImage(url)); } finally{ URL.revokeObjectURL(url); }
+}
+
+/* ---------------- Step 1: selfie ---------------- */
+async function setSelfieFromCanvas(canvas){
+  if(!state.modelsReady){ setStatus($('selfieStatus'),'Models still loading — try again in a moment.','warn'); return; }
+  const wrap = $('selfiePreviewWrap'); wrap.innerHTML=''; wrap.appendChild(canvas);
+  setStatus($('selfieStatus'),'Analysing selfie…');
+  const dets = await faceapi.detectAllFaces(canvas).withFaceLandmarks().withFaceDescriptors();
+  if(!dets.length){ state.selfie=null; setStatus($('selfieStatus'),'No face found. Try a clearer, well-lit, front-facing photo.','bad'); refreshButtons(); return; }
+  // use the largest face
+  dets.sort((a,b)=>b.detection.box.area-a.detection.box.area);
+  state.selfie = dets[0].descriptor;
+  const b = dets[0].detection.box, ctx = canvas.getContext('2d');
+  ctx.lineWidth = Math.max(3, canvas.width/120); ctx.strokeStyle='#3ddc97'; ctx.strokeRect(b.x,b.y,b.width,b.height);
+  setStatus($('selfieStatus'), dets.length>1 ? `✓ ${dets.length} faces found — using the largest one.` : '✓ Face detected and encoded.', dets.length>1?'warn':'ok');
+  refreshButtons();
+}
+$('selfieFile').onchange = async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ await setSelfieFromCanvas(await blobToCanvas(f)); }catch(err){ setStatus($('selfieStatus'),err.message,'bad'); }
+};
+
+let stream=null;
+$('camBtn').onclick = async ()=>{
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});
+    const v=document.createElement('video'); v.autoplay=true; v.playsInline=true; v.muted=true; v.srcObject=stream; v.style.transform='scaleX(-1)';
+    const wrap=$('selfiePreviewWrap'); wrap.innerHTML=''; wrap.appendChild(v); $('snapBtn').hidden=false;
+  }catch(e){ setStatus($('selfieStatus'),'Webcam unavailable: '+e.message+' (needs https or localhost).','bad'); }
+};
+$('snapBtn').onclick = async ()=>{
+  const v = $('selfiePreviewWrap').querySelector('video'); if(!v) return;
+  const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  stream.getTracks().forEach(t=>t.stop()); $('snapBtn').hidden=true;
+  await setSelfieFromCanvas(c);
+};
+
+/* ---------------- Step 2a: Google Drive ---------------- */
+function parseFolderId(s){
+  s=s.trim(); const m = s.match(/folders\/([a-zA-Z0-9_-]+)/) || s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m?m[1]:s;
+}
+function getToken(clientId){
+  return new Promise((resolve,reject)=>{
+    if(!window.google||!google.accounts) return reject(new Error('Google sign-in script not loaded yet.'));
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.readonly',
+      callback: r => r.error ? reject(new Error(r.error_description||r.error)) : resolve(r.access_token)
+    });
+    tc.requestAccessToken({prompt:''});
+  });
+}
+async function driveList(folderId, recursive, token, out=[]){
+  let pageToken='';
+  do{
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and (mimeType contains 'image/' or mimeType='application/vnd.google-apps.folder')`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=nextPageToken,files(id,name,mimeType,webViewLink)${pageToken?'&pageToken='+pageToken:''}`;
+    const r = await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    if(!r.ok) throw new Error('Drive list failed: '+(await r.text()).slice(0,200));
+    const j = await r.json();
+    for(const f of j.files){
+      if(f.mimeType==='application/vnd.google-apps.folder'){ if(recursive) await driveList(f.id,true,token,out); }
+      else out.push(f);
+    }
+    pageToken=j.nextPageToken||'';
+  }while(pageToken);
+  return out;
+}
+$('driveBtn').onclick = async ()=>{
+  const cid=$('clientId').value.trim(), folder=parseFolderId($('folderInput').value);
+  if(!cid||!folder){ alert('Enter the OAuth Client ID and a Drive folder link/ID.'); return; }
+  try{
+    startUI('Signing in to Google…');
+    state.token = await getToken(cid);
+    $('progressText').textContent='Listing images in Drive folder…';
+    const files = await driveList(folder,$('recursive').checked,state.token);
+    if(!files.length){ $('progressText').textContent='No images found in that folder.'; finishUI(); return; }
+    await scan(files.length, async i=>{
+      const f=files[i];
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&supportsAllDrives=true`,{headers:{Authorization:'Bearer '+state.token}});
+      if(!r.ok) throw new Error('download failed');
+      return {name:f.name, link:f.webViewLink, canvas: await blobToCanvas(await r.blob())};
+    });
+  }catch(e){ $('progressText').textContent='Error: '+e.message; finishUI(); }
+};
+
+/* ---------------- Step 2b: local folder ---------------- */
+async function localScan(fileList){
+  if(!state.selfie){ alert('Add a selfie first (Step 1).'); return; }
+  const files=[...fileList].filter(f=>f.type.startsWith('image/'));
+  if(!files.length){ alert('No images found.'); return; }
+  startUI('Preparing…');
+  await scan(files.length, async i=>({name:files[i].webkitRelativePath||files[i].name, link:null, canvas: await blobToCanvas(files[i])}));
+}
+$('localFolder').onchange = e=>localScan(e.target.files);
+$('localFiles').onchange  = e=>localScan(e.target.files);
+
+/* ---------------- Step 3: scan + match ---------------- */
+function startUI(msg){
+  $('resultsCard').hidden=false; $('matches').innerHTML=''; state.results=[];
+  $('bar').style.width='0'; $('progressText').textContent=msg;
+  ['sScanned','sFaces','sMatch'].forEach(id=>$(id).textContent='0');
+  $('csvBtn').disabled=true; $('stopBtn').hidden=false; state.stop=false; state.scanning=true;
+  $('resultsCard').scrollIntoView({behavior:'smooth'});
+}
+function finishUI(){ state.scanning=false; $('stopBtn').hidden=true; }
+
+async function scan(total, fetchItem){
+  let faces=0;
+  for(let i=0;i<total;i++){
+    if(state.stop) break;
+    $('progressText').textContent=`Scanning ${i+1} / ${total}…`;
+    try{
+      const item = await fetchItem(i);
+      const dets = await faceapi.detectAllFaces(item.canvas).withFaceLandmarks().withFaceDescriptors();
+      item.faces = dets.map(d=>({box:d.detection.box, dist: faceapi.euclideanDistance(state.selfie,d.descriptor)}));
+      item.best = item.faces.length ? Math.min(...item.faces.map(f=>f.dist)) : Infinity;
+      faces += item.faces.length;
+      state.results.push(item);
+    }catch(e){ console.warn('skipped item',i,e); }
+    $('bar').style.width = ((i+1)/total*100)+'%';
+    $('sScanned').textContent=i+1; $('sFaces').textContent=faces;
+    render();
+    await new Promise(r=>setTimeout(r)); // keep UI responsive
+  }
+  $('progressText').textContent = state.stop ? 'Stopped.' : `Done — scanned ${state.results.length} photo(s).`;
+  finishUI();
+}
+$('stopBtn').onclick=()=>{state.stop=true};
+
+function render(){
+  const th = parseFloat($('threshold').value);
+  $('thVal').textContent = th.toFixed(2);
+  const host=$('matches'); host.innerHTML='';
+  const hits = state.results.filter(r=>r.best<=th).sort((a,b)=>a.best-b.best);
+  hits.forEach(r=>{
+    const card=document.createElement('div'); card.className='photo';
+    const c=document.createElement('canvas'); c.width=r.canvas.width; c.height=r.canvas.height;
+    const ctx=c.getContext('2d'); ctx.drawImage(r.canvas,0,0);
+    ctx.lineWidth=Math.max(3,c.width/150); ctx.font=`${Math.max(14,c.width/40)}px sans-serif`;
+    r.faces.forEach(f=>{
+      const me=f.dist<=th; ctx.strokeStyle=me?'#3ddc97':'rgba(255,255,255,.35)';
+      ctx.strokeRect(f.box.x,f.box.y,f.box.width,f.box.height);
+    });
+    const meta=document.createElement('div'); meta.className='meta';
+    const conf=Math.max(0,Math.min(100,Math.round((1-r.best/0.8)*100)));
+    meta.innerHTML=`<span class="name" title="${r.name.replace(/"/g,'&quot;')}">${r.name.replace(/</g,'&lt;')}</span>
+      <span class="badge">${conf}% match · d=${r.best.toFixed(2)}</span>
+      ${r.link?`<a href="${r.link}" target="_blank" rel="noopener">Open in Drive ↗</a>`:''}`;
+    card.append(c,meta); host.appendChild(card);
+  });
+  $('sMatch').textContent=hits.length;
+  $('csvBtn').disabled = !hits.length;
+}
+$('threshold').oninput=render;
+
+$('csvBtn').onclick=()=>{
+  const th=parseFloat($('threshold').value);
+  const rows=[['name','distance','link']].concat(state.results.filter(r=>r.best<=th).map(r=>[r.name,r.best.toFixed(3),r.link||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='matching_photos.csv'; a.click();
+};
+</script>
+</body>
+</html>

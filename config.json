@@ -1,0 +1,27 @@
+{
+  "appName": "Selfie Finder",
+  "version": "1.0.0",
+  "model": {
+    "url": "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/",
+    "files": ["ssdMobilenetv1", "faceLandmark68Net", "faceRecognitionNet"]
+  },
+  "matching": {
+    "defaultThreshold": 0.5,
+    "minThreshold": 0.3,
+    "maxThreshold": 0.7,
+    "step": 0.01,
+    "confidenceScale": 0.8
+  },
+  "image": {
+    "maxDimension": 1280
+  },
+  "google": {
+    "clientId": "",
+    "scope": "https://www.googleapis.com/auth/drive.readonly",
+    "pageSize": 200,
+    "includeSubfoldersByDefault": true
+  },
+  "export": {
+    "csvFileName": "matching_photos.csv"
+  }
+}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selfie Finder – Face Recognition Demo</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>🔍 Selfie Finder</h1>
+  <p>Upload a selfie, point it at a Google Drive folder, and find every photo that person appears in. Face matching runs locally in your browser.</p>
+</header>
+
+<main>
+  <!-- STEP 1 -->
+  <section class="card">
+    <h2><span class="step">1</span> Provide a selfie</h2>
+    <p class="hint">Use a clear, front-facing photo with only one face.</p>
+    <div class="row">
+      <div id="selfiePreviewWrap"><span id="selfiePlaceholder">No selfie yet</span></div>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:10px">
+          <label class="btn" for="selfieFile" style="margin:0;color:#fff">📁 Upload selfie</label>
+          <input id="selfieFile" type="file" accept="image/*" hidden>
+          <button class="secondary" id="camBtn">📷 Use webcam</button>
+          <button class="secondary" id="snapBtn" hidden>● Capture</button>
+        </div>
+        <div id="modelStatus" class="status warn">Loading face-recognition models…</div>
+        <div id="selfieStatus" class="status" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="card">
+    <h2><span class="step">2</span> Choose where to search</h2>
+    <p class="hint">Connect a Google Drive folder, or try the demo with a folder on your computer.</p>
+    <div class="tabs">
+      <div class="tab active" data-pane="drivePane">☁️ Google Drive</div>
+      <div class="tab" data-pane="localPane">💻 Local folder (demo)</div>
+    </div>
+
+    <div id="drivePane" class="pane active">
+      <label for="clientId">Google OAuth Client ID (Web application)</label>
+      <input type="text" id="clientId" placeholder="1234567890-abc123.apps.googleusercontent.com">
+      <label for="folderInput">Drive folder link or ID</label>
+      <input type="text" id="folderInput" placeholder="https://drive.google.com/drive/folders/XXXXXXXX">
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="recursive" checked> Include sub-folders</label>
+      <div class="row" style="margin-top:14px;gap:10px">
+        <button id="driveBtn" disabled>Sign in &amp; scan Drive folder</button>
+      </div>
+      <details>
+        <summary>How do I get a Client ID?</summary>
+        <ol>
+          <li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> → create a project.</li>
+          <li><b>APIs &amp; Services → Library</b> → enable <b>Google Drive API</b>.</li>
+          <li><b>OAuth consent screen</b> → External → add yourself as a test user.</li>
+          <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>.</li>
+          <li>Under <i>Authorized JavaScript origins</i> add <code>https://YOUR-USERNAME.github.io</code> (origin only, no path) and optionally <code>http://localhost:8000</code> for local testing.</li>
+          <li>Paste the Client ID above, or put it in <code>config.json</code> under <code>google.clientId</code>. Only the read-only Drive scope is requested.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div id="localPane" class="pane">
+      <p class="hint" style="margin-top:0">Pick a folder of photos (all images inside, including sub-folders, will be scanned). Nothing is uploaded anywhere.</p>
+      <label class="btn" for="localFolder" style="display:inline-block;color:#fff">📂 Choose folder</label>
+      <input id="localFolder" type="file" webkitdirectory multiple accept="image/*" hidden>
+      <label class="btn secondary" for="localFiles" style="display:inline-block;margin-left:8px">🖼️ Or pick several images</label>
+      <input id="localFiles" type="file" multiple accept="image/*" hidden>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="card" id="resultsCard" hidden>
+    <h2><span class="step">3</span> Results</h2>
+    <div class="progress"><div id="bar"></div></div>
+    <div id="progressText" class="hint" style="margin-top:8px"></div>
+
+    <div class="controls">
+      <div>
+        <label for="threshold" style="margin:0">Match strictness: <b id="thVal">0.50</b> <span style="font-size:.75rem">(lower = stricter)</span></label>
+        <input type="range" id="threshold" min="0.30" max="0.70" step="0.01" value="0.50">
+      </div>
+      <button class="secondary" id="csvBtn" disabled>⬇ Export matches (CSV)</button>
+      <button class="secondary" id="stopBtn" hidden>■ Stop</button>
+    </div>
+
+    <div class="stats">
+      <div><b id="sScanned">0</b> scanned</div>
+      <div><b id="sFaces">0</b> faces found</div>
+      <div><b id="sMatch" style="color:var(--ok)">0</b> photos of this person</div>
+    </div>
+    <div id="matches" class="grid"></div>
+  </section>
+
+  <p class="privacy">🔒 Photos are processed on your device. Only the Drive API is contacted (read-only) to download images. Use this only with photos you have the right to search, and with the consent of the people in them.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/app.js"></script>
+</body>
+</html>
